@@ -1,0 +1,8 @@
+# local dev/verification tooling - not part of the deployed app
+verify.py
+preview.py
+icon-preview.html
+research/
+__pycache__/
+*.pyc
+.DS_Store

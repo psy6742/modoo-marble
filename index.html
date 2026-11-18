@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="모두의 마블 계산기">
+<meta name="theme-color" content="#1b4fd8">
+<title>🎲 모두의 마블 자산 계산기</title>
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
+<style>
+  :root{
+    --red:#E53935; --blue:#1E88E5; --yellow:#FBC02D; --green:#43A047;
+    --ink:#12233d; --ink-soft:#5b6f8a; --line:#dbe4f0;
+    --royal:#1b4fd8; --royal-dark:#133a9e;
+    --panel:#ffffff; --radius:16px;
+    --shadow:0 2px 0 rgba(18,35,61,.08), 0 6px 18px rgba(18,35,61,.10);
+    --pad:10px;
+  }
+  *{box-sizing:border-box; min-width:0;}
+  [hidden]{display:none !important;}
+  html,body{height:100%;}
+  body{
+    margin:0; padding:var(--pad);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #d6ecff 0%, rgba(214,236,255,0) 60%),
+      radial-gradient(900px 500px at 100% 0%, #ffeec2 0%, rgba(255,238,194,0) 55%),
+      linear-gradient(160deg,#eaf5ff 0%,#e3f0ff 45%,#eaf7f0 100%);
+    height:100vh; overflow:hidden;
+    -webkit-text-size-adjust:100%;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
+  input{font-family:inherit; color:inherit;}
+  .app{display:flex; flex-direction:column; gap:8px; height:100%;}
+
+  /* ---------- header ---------- */
+  .topbar{
+    display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:8px;
+    background:linear-gradient(180deg,#ffffff,#f7fbff);
+    border:2px solid #cfe0f5; border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:4px 10px; height:64px; flex:0 0 auto;
+  }
+  .brand{display:flex; align-items:center; gap:7px; font-weight:900; letter-spacing:-.5px; font-size:16px; color:var(--royal-dark); white-space:nowrap;}
+  .brand .dice{font-size:20px; filter:drop-shadow(0 2px 2px rgba(0,0,0,.15));}
+  .brand small{display:block; font-size:10px; font-weight:700; color:var(--ink-soft); letter-spacing:0;}
+  .countctl{display:flex; align-items:center; gap:3px; margin-top:1px;}
+  .countctl span{font-size:9.5px; font-weight:900; color:var(--ink-soft); letter-spacing:0;}
+  .countctl .ccemoji{font-size:9px;}
+  .countctl button{
+    width:20px; height:16px; border-radius:5px; font-size:10px; font-weight:900;
+    background:#eef4fc; color:#5b6f8a; border:1px solid #d5e2f2; line-height:1;
+  }
+  .countctl button.on{background:var(--royal); color:#fff; border-color:var(--royal-dark);}
+
+  /* timer */
+  .timer{display:flex; justify-content:center; align-items:center; gap:5px; background:#0f1c33; padding:4px 8px; border-radius:13px; box-shadow:inset 0 -3px 0 rgba(0,0,0,.35); min-width:0; overflow:hidden;}
+  .timer .clock{
+    font-variant-numeric:tabular-nums; font-weight:900; font-size:22px; letter-spacing:.5px;
+    color:#7ef0c0; text-shadow:0 0 12px rgba(80,255,190,.45); min-width:82px; text-align:center;
+  }
+  .timer.warn .clock{color:#ffd166; text-shadow:0 0 12px rgba(255,209,102,.5);}
+  .timer.done .clock{color:#ff6b6b; text-shadow:0 0 14px rgba(255,107,107,.7); animation:blink .8s steps(2,end) infinite;}
+  @keyframes blink{50%{opacity:.25}}
+  .tbtn{
+    height:28px; min-width:30px; padding:0 7px; border-radius:8px; font-weight:800; font-size:12px;
+    background:#ffffff; color:#0f1c33; box-shadow:0 2px 0 rgba(0,0,0,.35); flex:0 0 auto;
+  }
+  .tbtn:active{transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,.35);}
+  .tbtn.primary{background:#38d39f; color:#08301f;}
+  .tbtn.stop{background:#ff6b6b; color:#3a0000;}
+  .tbtn.bell{background:#ffd166; color:#4a3200;}
+  .tchips{display:flex; gap:3px;}
+  .tchip{height:24px; padding:0 6px; border-radius:7px; font-size:11px; font-weight:800; background:#22375a; color:#cfe2ff; box-shadow:0 2px 0 rgba(0,0,0,.3);}
+  .tchip:active{transform:translateY(1px);}
+  .tcust{width:44px; height:24px; border-radius:7px; border:none; background:#22375a; color:#fff; text-align:center; font-weight:800; font-size:11px;}
+  .tcust::placeholder{color:#8fa8cc;}
+
+  .actions{display:flex; justify-content:flex-end; gap:6px; flex-wrap:nowrap; white-space:nowrap;}
+  .abtn{
+    height:34px; padding:0 10px; border-radius:10px; font-weight:900; font-size:12.5px; white-space:nowrap;
+    background:#fff; border:2px solid #cfdff2; color:var(--ink); box-shadow:0 2px 0 #c3d5ea;
+  }
+  .abtn:active{transform:translateY(1px); box-shadow:0 1px 0 #c3d5ea;}
+  .abtn.rank{background:linear-gradient(180deg,#ffd76a,#f5b21c); border-color:#e0a10c; box-shadow:0 2px 0 #c98d06; color:#3d2a00;}
+  .abtn.price{background:#eef6ff;}
+
+  /* ---------- players ---------- */
+  .players{display:grid; gap:8px; grid-template-columns:repeat(var(--n,4),minmax(0,1fr)); flex:0 0 auto;}
+  .pcard{
+    position:relative; text-align:left; border-radius:14px; padding:6px 8px 7px 12px;
+    background:#fff; border:2px solid #dbe6f4; box-shadow:0 2px 0 rgba(18,35,61,.07), 0 4px 10px rgba(18,35,61,.07);
+    overflow:hidden; transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .pcard::before{content:""; position:absolute; left:0; top:0; bottom:0; width:9px; background:var(--pc,#ccc);}
+  .pcard[hidden]{display:none;}
+  .pcard{cursor:pointer;}
+  .pcard:focus-visible{outline:3px solid #9ec2ff; outline-offset:1px;}
+  .pcard.on{border-color:var(--pc); box-shadow:0 0 0 3px rgba(30,136,229,.25); box-shadow:0 0 0 3px color-mix(in srgb, var(--pc) 28%, transparent), 0 6px 14px rgba(18,35,61,.14); transform:translateY(-1px);}
+  .pname{display:flex; align-items:center; gap:6px;}
+  .pdot{width:12px; height:12px; border-radius:50%; background:var(--pc); box-shadow:0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,.06); flex:0 0 auto;}
+  .pname input{
+    flex:1; min-width:0; border:none; background:transparent; font-weight:900; font-size:16px; padding:2px 0;
+    border-bottom:2px dashed transparent; border-radius:0;
+  }
+  .pname input:focus{outline:none; border-bottom-color:var(--pc);}
+  .pstats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; margin-top:3px;}
+  .stat{background:#f5f9ff; border-radius:8px; padding:2px 5px;}
+  .stat b{display:block; font-size:10px; font-weight:800; color:var(--ink-soft); letter-spacing:-.2px;}
+  .stat span{display:block; font-size:13px; font-weight:900; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .stat.total{background:#eef6ff; background:color-mix(in srgb, var(--pc) 14%, #fff);}
+  .stat.total span{font-size:15px;}
+  .pcard .crown{position:absolute; right:7px; top:4px; font-size:14px; opacity:0;}
+
+  /* ---------- panels ---------- */
+  .panels{display:grid; grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); gap:8px; flex:1 1 auto; min-height:0;}
+  .panel{
+    background:var(--panel); border:2px solid #dbe6f4; border-radius:var(--radius); box-shadow:var(--shadow);
+    display:flex; flex-direction:column; min-height:0; overflow:hidden;
+  }
+  .phead{display:flex; align-items:center; gap:8px; padding:6px 10px; border-bottom:2px solid #eef3fa; flex:0 0 auto; background:linear-gradient(180deg,#fbfdff,#f4f9ff);}
+  .phead h2{margin:0; font-size:15px; font-weight:900; letter-spacing:-.3px; display:flex; align-items:center; gap:6px;}
+  .phead .who{margin-left:auto; display:flex; align-items:center; gap:6px; font-size:12px; font-weight:800; color:var(--ink-soft);}
+  .who .chip{display:inline-flex; align-items:center; gap:5px; background:#fff; border:2px solid var(--pc,#ccc); padding:1px 8px; border-radius:999px; color:var(--ink); font-weight:900;}
+  .who .dot{width:9px; height:9px; border-radius:50%; background:var(--pc,#ccc);}
+  .sum{font-size:16px; font-weight:900; font-variant-numeric:tabular-nums; color:var(--royal-dark);}
+  .pbody{flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; padding:8px; -webkit-overflow-scrolling:touch;}
+  .pbody::-webkit-scrollbar{width:8px;}
+  .pbody::-webkit-scrollbar-thumb{background:#cfdff2; border-radius:8px;}
+
+  /* cities */
+  .citygrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:6px;}
+  .city{
+    border:2px solid #e3ecf7; border-left-width:6px; border-radius:11px; background:#fff; padding:4px 5px 5px;
+    display:flex; flex-direction:column; gap:3px; transition:box-shadow .12s, transform .12s;
+  }
+  .city.mine{border-color:var(--pc); box-shadow:0 0 0 2px rgba(30,136,229,.18); box-shadow:0 0 0 2px color-mix(in srgb, var(--pc) 22%, transparent);}
+  .city.other{background:#f7f9fc;}
+  .ctop{display:flex; align-items:baseline; gap:3px;}
+  .cname{font-size:13px; font-weight:900; letter-spacing:-.4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .cval{margin-left:auto; font-size:10.5px; font-weight:800; color:var(--ink-soft); font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .owner{
+    display:flex; align-items:center; gap:4px; width:100%; height:22px; padding:0 6px; border-radius:7px;
+    background:#f2f6fc; font-size:11px; font-weight:800; color:var(--ink-soft); text-align:left;
+    border:1.5px dashed #cfdcee;
+  }
+  .owner .od{width:8px; height:8px; border-radius:50%; background:#c8d4e4; flex:0 0 auto;}
+  .owner .olabel{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .owner .flag{margin-left:auto; font-size:10px;}
+  .city.mine .owner{background:#eef6ff; background:color-mix(in srgb, var(--pc) 12%, #fff); border-style:solid; border-color:var(--pc); color:var(--ink);}
+  .city.mine .owner .od{background:var(--pc);}
+  .city.other .owner{background:#eef2f8; border-style:solid; border-color:#d5dfeb;}
+  .blds{display:none; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px;}
+  .city.mine .blds{display:grid;}
+  .bld{
+    height:26px; border-radius:6px; font-size:10.5px; font-weight:800; letter-spacing:-.4px;
+    background:#f1f5fb; color:#7b8ba3; border:1.5px solid #e2eaf5;
+    display:flex; align-items:center; justify-content:center; padding:0 1px; white-space:nowrap;
+  }
+  .bld:active{transform:translateY(1px);}
+  .bld.on{background:var(--pc); color:#fff; border-color:rgba(0,0,0,.25); box-shadow:inset 0 -2px 0 rgba(0,0,0,.18);}
+  .bld.mark.on{background:linear-gradient(180deg,#ffd76a,#f0a80f); color:#3d2a00; border-color:#d99b06;}
+  .tourist .blds{grid-template-columns:1fr;}
+
+  /* cash */
+  .cashhead{display:flex; align-items:center; gap:6px; padding:6px 8px 0; flex:0 0 auto;}  .modeswitch{display:flex; gap:4px; background:#eef4fc; border-radius:10px; padding:3px; width:100%;}
+  .modeswitch button{
+    flex:1; height:28px; border-radius:8px; font-size:12px; font-weight:900; color:#6b7f99;
+  }
+  .modeswitch button.on{background:#fff; color:var(--royal-dark); box-shadow:0 1px 3px rgba(18,35,61,.18);}
+  .bills{display:flex; flex-direction:column; gap:4px;}
+  .bill{display:grid; grid-template-columns:minmax(0,1fr) 34px 56px 34px; align-items:center; gap:5px;}
+  .billlabel{display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:900; letter-spacing:-.3px;}
+  .money{position:relative; width:26px; height:16px; border-radius:3px; border:1.5px solid rgba(0,0,0,.18); flex:0 0 auto;}
+  .money::after{content:""; position:absolute; inset:2px; border-radius:2px; border:1px dashed rgba(0,0,0,.22);}
+  .stepper{width:34px; height:30px; border-radius:8px; background:#fff; border:2px solid #dbe6f4; font-weight:900; font-size:15px; color:#33465f;}
+  .stepper:active{transform:translateY(1px);}
+  .cnt{width:100%; height:30px; text-align:center; border-radius:8px; border:2px solid #dbe6f4; background:#f8fbff; font-weight:900; font-size:14px; font-variant-numeric:tabular-nums;}
+  .cnt:focus{outline:none; border-color:var(--royal);}
+  .bill .sub{grid-column:1 / -1; text-align:right; font-size:10.5px; font-weight:800; color:#8fa0b8; margin-top:-3px;}
+  .line-total{display:flex; align-items:center; justify-content:space-between; margin-top:6px; padding:6px 9px; border-radius:10px; background:#f3f8ff; border:2px dashed #cfe0f5;}
+  .line-total b{font-size:11.5px; color:var(--ink-soft); font-weight:900;}
+  .line-total span{font-size:17px; font-weight:900; color:var(--royal-dark); font-variant-numeric:tabular-nums;}
+
+  .manualbox{display:flex; flex-direction:column; gap:7px;}
+  .biginput{display:flex; align-items:center; gap:7px; background:#f8fbff; border:2px solid #dbe6f4; border-radius:12px; padding:7px 10px;}
+  .biginput input{flex:1; min-width:0; border:none; background:transparent; font-size:26px; font-weight:900; text-align:right; font-variant-numeric:tabular-nums;}
+  .biginput input:focus{outline:none;}
+  .biginput .unit{font-size:14px; font-weight:900; color:var(--ink-soft);}
+  .quick{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px;}
+  .quick button{height:32px; border-radius:9px; background:#fff; border:2px solid #dbe6f4; font-weight:900; font-size:12px; color:var(--royal-dark);}
+  .quick button:active{transform:translateY(1px);}
+  .quick button.clear{color:#b23c3c; border-color:#f2d4d4; background:#fff6f6;}
+  .hint{font-size:10.5px; color:#8fa0b8; font-weight:700; line-height:1.35;}
+
+  .cashlist{margin-top:8px; padding-top:7px; border-top:2px dashed #e6eef8; display:flex; flex-direction:column; gap:3px;}
+  .cashlist .ttl{font-size:10.5px; font-weight:900; color:#8fa0b8; margin-bottom:1px;}
+  .cashrow{
+    display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:6px; align-items:center;
+    padding:4px 7px; border-radius:8px; background:#f8fbff; font-size:12px; font-weight:800; text-align:left; width:100%;
+  }
+  .cashrow.on{background:#eef6ff; box-shadow:inset 0 0 0 1.5px #cfe0f5;}
+  .cashrow .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900;}
+  .cashrow .amt{font-variant-numeric:tabular-nums; color:var(--royal-dark); font-weight:900;}
+  .landfoot{
+    display:flex; align-items:center; gap:8px; flex:0 0 auto; padding:4px 10px; border-top:2px solid #eef3fa;
+    font-size:10.5px; font-weight:900; color:#6f8299; background:#fbfdff;
+  }
+  .landfoot b{color:var(--royal-dark);}
+
+  .notebar{
+    display:flex; align-items:center; gap:6px; margin:0; padding:4px 8px; flex:0 0 auto;
+    font-size:10.5px; font-weight:800; color:#7a5b00; background:#fff8e1; border-top:2px solid #f6e6b8;
+  }
+  .notebar button{margin-left:auto; font-size:11px; color:#a3781b; font-weight:900;}
+
+  /* ---------- modals ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(12,24,42,.55); backdrop-filter:blur(3px);
+    display:none; align-items:center; justify-content:center; padding:16px; z-index:50;
+  }
+  .overlay.open{display:flex; animation:fadein .16s ease;}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  .modal{
+    position:relative; width:min(920px,100%); max-height:92vh; background:#fff; border-radius:20px; box-shadow:0 24px 60px rgba(0,0,0,.35);
+    display:flex; flex-direction:column; overflow:hidden; border:3px solid #fff;
+  }
+  .mhead{display:flex; align-items:center; gap:8px; padding:12px 16px; background:linear-gradient(180deg,#1b4fd8,#133a9e); color:#fff;}
+  .mhead h3{margin:0; font-size:18px; font-weight:900; letter-spacing:-.4px;}
+  .mhead .x{margin-left:auto; width:32px; height:32px; border-radius:9px; background:rgba(255,255,255,.18); color:#fff; font-size:16px; font-weight:900;}
+  .mbody{padding:14px; overflow:auto;}
+  .mfoot{display:flex; gap:8px; justify-content:flex-end; padding:10px 14px; border-top:2px solid #eef3fa; flex:0 0 auto;}
+
+  /* ranking */
+  .podium{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:10px; align-items:end;}
+  .pod{border-radius:14px; padding:8px; text-align:center; border:2px solid #e6eef8; background:#f9fcff;}
+  .pod.first{background:linear-gradient(180deg,#fff8e1,#ffeeba); border-color:#f2cd5b; padding:12px 8px; box-shadow:0 6px 18px rgba(240,180,20,.28);}
+  .pod .medal{font-size:26px; line-height:1;}
+  .pod.first .medal{font-size:34px;}
+  .pod .pn{font-weight:900; font-size:15px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .pod .pa{font-weight:900; font-size:15px; color:var(--royal-dark); font-variant-numeric:tabular-nums;}
+  .pod .pbar{height:8px; border-radius:99px; margin:6px auto 0; width:70%; background:var(--pc,#ccc);}
+  .ranklist{display:flex; flex-direction:column; gap:6px;}
+  .rrow{display:grid; grid-template-columns:44px minmax(0,1.1fr) repeat(4,minmax(0,.9fr)); gap:6px; align-items:center; padding:7px 10px; border-radius:12px; background:#f7faff; border:2px solid #e8f0fa; font-variant-numeric:tabular-nums;}
+  .rrow.head{background:#eef5ff; font-size:11px; font-weight:900; color:var(--ink-soft); padding:4px 10px;}
+  .rrow .rk{font-weight:900; font-size:13px;}
+  .rrow .rn{display:flex; align-items:center; gap:6px; font-weight:900; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rrow .rn .dot{width:11px; height:11px; border-radius:50%; background:var(--pc,#ccc); flex:0 0 auto;}
+  .rrow .num{font-weight:900; font-size:13.5px; text-align:right;}
+  .rrow.head div:nth-child(n+3){text-align:right;}
+  .rrow .num.big{font-size:15px; color:var(--royal-dark);}
+  .rrow.win{background:linear-gradient(90deg,#fff9e6,#fff); border-color:#f2cd5b;}
+  .confetti{position:absolute; width:8px; height:14px; border-radius:2px; opacity:.85; animation:fall 2.4s linear forwards; z-index:5; pointer-events:none;}
+  .mhead,.mbody,.mfoot{position:relative; z-index:2; background:#fff;}
+  .mhead{background:linear-gradient(180deg,#1b4fd8,#133a9e);}
+  .mbody{background:#fff;}
+  @keyframes fall{from{transform:translateY(-40px) rotate(0)}to{transform:translateY(70vh) rotate(540deg); opacity:0}}
+
+  /* prices modal */
+  .ptable{width:100%; border-collapse:separate; border-spacing:0 4px; font-variant-numeric:tabular-nums;}
+  .ptable th{font-size:11px; color:var(--ink-soft); font-weight:900; padding:2px 3px; text-align:center;}
+  .ptable th:first-child{text-align:left;}
+  .ptable td{padding:0 2px;}
+  .ptable .grp{font-weight:900; font-size:12.5px; padding:6px 8px; border-radius:8px 0 0 8px; background:#f5f9ff;}
+  .ptable td pcell{display:block;}
+  .ptable input{
+    width:100%; height:28px; text-align:right; border:2px solid #e1eaf6; border-radius:7px; background:#fff;
+    font-weight:800; font-size:13px; padding:0 6px; font-variant-numeric:tabular-nums;
+  }
+  .ptable input:focus{outline:none; border-color:var(--royal); background:#f7fbff;}
+  .pnote{font-size:11px; color:var(--ink-soft); font-weight:700; line-height:1.45; margin:0 0 8px;}
+
+  /* timer end overlay */
+  .endbox{text-align:center; padding:26px 24px; background:linear-gradient(180deg,#fff,#fff5f5);}
+  .endbox .big{font-size:44px; font-weight:900; color:#d93030; letter-spacing:-1px;}
+  .endbox p{margin:6px 0 16px; color:var(--ink-soft); font-weight:800;}
+
+  .toast{
+    position:fixed; left:50%; bottom:18px; transform:translateX(-50%) translateY(20px);
+    background:#12233d; color:#fff; padding:9px 16px; border-radius:999px; font-weight:800; font-size:13px;
+    opacity:0; pointer-events:none; transition:all .22s ease; z-index:80; box-shadow:0 8px 20px rgba(0,0,0,.3);
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:1100px){
+    .brand{font-size:14px;}
+    .brand .dice{font-size:18px;}
+    .timer{gap:4px; padding:4px 6px;}
+    .timer .clock{font-size:20px; min-width:74px;}
+    .pname input{font-size:15px;}
+    .stat span{font-size:12px;}
+    .stat.total span{font-size:14px;}
+    .citygrid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));}
+    .cname{font-size:12px;}
+    .bld{height:25px; font-size:10px;}
+  }
+  @media (max-width:1060px){
+    .countctl .cctext{display:none;}
+    .brand{font-size:13px;}
+    .tchip{padding:0 5px; font-size:10.5px;}
+    .abtn{padding:0 8px; font-size:12px;}
+    .tcust{width:38px;}
+  }
+  @media (max-width:900px){
+    .panels{grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) minmax(0,.9fr);}
+    .brand small{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ HEADER ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="dice">🎲</span>
+      <div>모두의 마블 자산 계산기
+        <div class="countctl" aria-label="참여 인원">
+          <span class="ccemoji">👥</span><span class="cctext">인원</span>
+          <button type="button" data-count="2">2</button>
+          <button type="button" data-count="3">3</button>
+          <button type="button" data-count="4" class="on">4</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="timer" id="timerBox">
+      <button class="tbtn primary" id="btnTimerStart" aria-label="타이머 시작">▶</button>
+      <div class="clock" id="clock">60:00</div>
+      <button class="tbtn" id="btnTimerReset" aria-label="타이머 초기화">↺</button>
+      <div class="tchips">
+        <button class="tchip" data-adj="-5" aria-label="5분 줄이기">-5</button>
+        <button class="tchip" data-adj="-1" aria-label="1분 줄이기">-1</button>
+        <button class="tchip" data-adj="1" aria-label="1분 늘리기">+1</button>
+        <button class="tchip" data-adj="5" aria-label="5분 늘리기">+5</button>
+      </div>
+      <div class="tchips">
+        <button class="tchip" data-preset="30">30</button>
+        <button class="tchip" data-preset="45">45</button>
+        <button class="tchip" data-preset="60">60</button>
+        <button class="tchip" data-preset="90">90</button>
+      </div>
+      <input class="tcust" id="customMin" type="number" inputmode="numeric" min="1" max="240" placeholder="분" aria-label="원하는 시간(분)">
+      <button class="tbtn bell" id="btnBell" aria-label="알람 테스트">🔔</button>
+    </div>
+
+    <div class="actions">
+      <button class="abtn price" id="btnPrices">⚙️ 가격표</button>
+      <button class="abtn" id="btnNewGame">🔄 새 게임</button>
+      <button class="abtn rank" id="btnRanking">🏆 순위 발표</button>
+    </div>
+  </header>
+
+  <!-- ============ PLAYERS ============ -->
+  <section class="players" id="players" aria-label="참여자"></section>
+
+  <!-- ============ PANELS ============ -->
+  <main class="panels">
+    <!-- LAND -->
+    <section class="panel" aria-label="1. 땅값">
+      <div class="phead">
+        <h2>🏙️ 땅값</h2>
+        <span style="font-size:10.5px;font-weight:800;color:#8fa0b8;">도시 카드를 눌러 소유·건물 표시</span>
+        <div class="who">지금 편집 중 <span class="chip" id="landWho"><span class="dot"></span><span id="landWhoName">플레이어 1</span></span></div>
+        <div class="sum" id="landSum">0만</div>
+      </div>
+      <div class="pbody" id="landBody"></div>
+      <div class="landfoot" id="landFoot"></div>
+      <div class="notebar" id="priceNote" hidden>
+        가격표는 기본값이에요. 우리 카드와 다르면 <b>⚙️ 가격표</b>에서 고칠 수 있어요.
+        <button id="noteClose" aria-label="안내 닫기">확인</button>
+      </div>
+    </section>
+
+    <!-- CASH -->
+    <section class="panel" aria-label="2. 현금">
+      <div class="phead">
+        <h2>💵 현금</h2>
+        <div class="who"><span class="chip" id="cashWho"><span class="dot"></span><span id="cashWhoName">플레이어 1</span></span></div>
+        <div class="sum" id="cashSum">0만</div>
+      </div>
+      <div class="cashhead">
+        <div class="modeswitch" role="tablist">
+          <button id="modeBills" role="tab">💵 권종별 입력</button>
+          <button id="modeManual" role="tab">⌨️ 직접 금액 입력</button>
+        </div>
+      </div>
+      <div class="pbody" style="padding-top:6px;">
+        <div id="billsView" class="bills"></div>
+        <div id="manualView" class="manualbox" hidden>
+          <div class="biginput">
+            <input id="manualInput" type="number" inputmode="decimal" min="0" step="0.5" placeholder="0" aria-label="현금 금액(만 마블)">
+            <span class="unit">만 마블</span>
+          </div>
+          <div class="quick">
+            <button data-add="100">+100만</button>
+            <button data-add="50">+50만</button>
+            <button data-add="10">+10만</button>
+            <button data-add="1">+1만</button>
+          </div>
+          <div class="quick">
+            <button data-add="5">+5만</button>
+            <button data-add="-1">-1만</button>
+            <button data-add="-10">-10만</button>
+            <button class="clear" data-add="0" id="btnManualClear">지우기</button>
+          </div>
+          <div class="hint" id="manualHint">예: 250 → 250만 마블 (2,500,000). 소수점도 돼요 (0.5 = 5천).</div>
+        </div>
+        <div class="line-total">
+          <b>현금 합계</b>
+          <span id="cashLine">0만 마블</span>
+        </div>
+        <div class="cashlist" id="cashList"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ RANKING MODAL ============ -->
+<div class="overlay" id="ovRanking" role="dialog" aria-modal="true" aria-labelledby="rankTitle">
+  <div class="modal" id="rankModal">
+    <div class="mhead">
+      <h3 id="rankTitle">🏆 최종 순위 발표</h3>
+      <button class="x" data-close="ovRanking" aria-label="닫기">✕</button>
+    </div>
+    <div class="mbody" id="rankBody"></div>
+    <div class="mfoot">
+      <button class="abtn" data-close="ovRanking">닫기</button>
+      <button class="abtn rank" id="btnCelebrate">🎉 다시 축하하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PRICE MODAL ============ -->
+<div class="overlay" id="ovPrices" role="dialog" aria-modal="true" aria-labelledby="priceTitle">
+  <div class="modal">
+    <div class="mhead">
+      <h3 id="priceTitle">⚙️ 가격표 수정</h3>
+      <button class="x" data-close="ovPrices" aria-label="닫기">✕</button>
+    </div>
+    <div class="mbody">
+      <p class="pnote">단위는 <b>만 마블</b>이에요. 우리 집 카드에 적힌 값과 다르면 숫자만 고쳐 주세요. 고친 값은 이 기기에 저장돼요.</p>
+      <div id="priceEditor"></div>
+    </div>
+    <div class="mfoot">
+      <button class="abtn" id="btnPriceReset">기본값으로</button>
+      <button class="abtn rank" data-close="ovPrices">저장하고 닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIRM MODAL ============ -->
+<div class="overlay" id="ovConfirm" role="dialog" aria-modal="true">
+  <div class="modal" style="width:min(460px,100%);">
+    <div class="mhead"><h3>🔄 새 게임</h3><button class="x" data-close="ovConfirm" aria-label="닫기">✕</button></div>
+    <div class="mbody" style="font-size:14px;font-weight:700;line-height:1.55;">
+      도시 소유·건물·현금을 모두 지우고 새 게임을 시작할까요?<br>
+      <span style="color:#8fa0b8;font-size:12px;">(이름과 가격표는 그대로 둬요.)</span>
+    </div>
+    <div class="mfoot">
+      <button class="abtn" data-close="ovConfirm">취소</button>
+      <button class="abtn rank" id="btnConfirmNew">새 게임 시작</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TIMER END ============ -->
+<div class="overlay" id="ovEnd" role="dialog" aria-modal="true">
+  <div class="modal" style="width:min(520px,100%);">
+    <div class="endbox">
+      <div class="big">⏰ 시간 종료!</div>
+      <p>게임을 마무리하고 <b>🏆 순위 발표</b>를 눌러 주세요.</p>
+      <button class="abtn rank" id="btnEndStop" style="height:46px;font-size:16px;">알람 끄기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =========================================================
+     DATA
+     ========================================================= */
+  const COLORS = ["#E53935", "#1E88E5", "#FBC02D", "#43A047"];
+
+  // 보드 색상 그룹 (가격 오름차순). 만 마블 단위.
+  const GROUPS = [
+    { id:"g1", name:"노랑", color:"#F4C430", cities:[
+      { id:"bangkok", name:"방콕", flag:"🇹🇭", p:[4,2,8,12,16] },
+      { id:"beijing", name:"베이징", flag:"🇨🇳", p:[4,2,8,12,16] }
+    ]},
+    { id:"g2", name:"주황", color:"#F58A33", cities:[
+      { id:"taipei", name:"타이베이", flag:"🇹🇼", p:[6,4,12,20,28] },
+      { id:"dubai",  name:"두바이",  flag:"🇦🇪", p:[6,4,12,20,28] }
+    ]},
+    { id:"g3", name:"빨강", color:"#E05C5C", cities:[
+      { id:"cairo", name:"카이로", flag:"🇪🇬", p:[8,4,14,24,32] },
+      { id:"tokyo", name:"도쿄", flag:"🇯🇵", p:[10,6,16,26,36] }
+    ]},
+    { id:"g4", name:"분홍", color:"#E86BA6", cities:[
+      { id:"sydney", name:"시드니", flag:"🇦🇺", p:[12,6,18,30,42] },
+      { id:"quebec", name:"퀘벡", flag:"🇨🇦", p:[12,6,18,30,42] }
+    ]},
+    { id:"g5", name:"보라", color:"#8E6BD6", cities:[
+      { id:"saopaulo", name:"상파울루", flag:"🇧🇷", p:[14,8,20,32,46] },
+      { id:"prague", name:"프라하", flag:"🇨🇿", p:[14,8,20,32,46] }
+    ]},
+    { id:"g6", name:"하늘", color:"#3FB6E8", cities:[
+      { id:"berlin", name:"베를린", flag:"🇩🇪", p:[16,8,22,34,50] },
+      { id:"moscow", name:"모스크바", flag:"🇷🇺", p:[16,8,22,34,50] }
+    ]},
+    { id:"g7", name:"초록", color:"#3FAE6E", cities:[
+      { id:"geneva", name:"제네바", flag:"🇨🇭", p:[18,10,24,38,56] },
+      { id:"rome", name:"로마", flag:"🇮🇹", p:[18,10,24,38,56] }
+    ]},
+    { id:"g8", name:"파랑", color:"#3B7DE0", cities:[
+      { id:"paris", name:"파리", flag:"🇫🇷", p:[18,8,22,36,52] },
+      { id:"london", name:"런던", flag:"🇬🇧", p:[20,10,24,38,60] }
+    ]},
+    { id:"g9", name:"남색", color:"#2C3E80", cities:[
+      { id:"newyork", name:"뉴욕", flag:"🇺🇸", p:[20,10,26,42,64] },
+      { id:"seoul", name:"서울", flag:"🇰🇷", p:[22,8,24,40,40] }
+    ]}
+  ];
+
+  const TOURISTS = [
+    { id:"dokdo", name:"독도", flag:"🇰🇷", kind:"섬" },
+    { id:"bali",  name:"발리", flag:"🇮🇩", kind:"해변" },
+    { id:"hawaii",name:"하와이", flag:"🇺🇸", kind:"섬" },
+    { id:"phuket",name:"푸켓", flag:"🇹🇭", kind:"섬" },
+    { id:"tahiti",name:"타히티", flag:"🇵🇫", kind:"해변" }
+  ];
+
+  const BILLS = [
+    { v:1000000, label:"100만", color:"#E9C46A" },
+    { v:500000,  label:"50만",  color:"#F4A261" },
+    { v:100000,  label:"10만",  color:"#90BE6D" },
+    { v:50000,   label:"5만",   color:"#4D96FF" },
+    { v:10000,   label:"1만",   color:"#B07BE8" },
+    { v:5000,    label:"5천",   color:"#F0739B" },
+    { v:1000,    label:"1천",   color:"#6FC3C0" }
+  ];
+
+  const PRICE_KEYS = ["land","villa","building","hotel","landmark"];
+  const PRICE_LABELS = { land:"땅", villa:"빌라", building:"빌딩", hotel:"호텔", landmark:"랜드마크" };
+  const STORAGE_KEY = "modooMarble.v1";
+
+  const defaultPrices = () => {
+    const o = {};
+    GROUPS.forEach(g => g.cities.forEach(c => {
+      o[c.id] = { land:c.p[0], villa:c.p[1], building:c.p[2], hotel:c.p[3], landmark:c.p[4] };
+    }));
+    TOURISTS.forEach(t => { o[t.id] = { land:10, villa:0, building:0, hotel:0, landmark:0 }; });
+    return o;
+  };
+
+  /* =========================================================
+     STATE
+     ========================================================= */
+  let state = {
+    count: 4,
+    active: 0,
+    players: [
+      { name:"플레이어 1" }, { name:"플레이어 2" },
+      { name:"플레이어 3" }, { name:"플레이어 4" }
+    ],
+    cities: {},    // id -> { owner: playerIdx|null, land, villa, building, hotel, landmark }
+    cash: [],      // per player { mode:'bills'|'manual', counts:{}, manual:0 }
+    prices: defaultPrices(),
+    priceNoteSeen: false,
+    timer: { duration: 3600000, remaining: 3600000, running: false, endAt: 0 }
+  };
+
+  function blankGame() {
+    const cities = {};
+    GROUPS.forEach(g => g.cities.forEach(c => {
+      cities[c.id] = { owner:null, land:false, villa:false, building:false, hotel:false, landmark:false };
+    }));
+    TOURISTS.forEach(t => {
+      cities[t.id] = { owner:null, land:false, villa:false, building:false, hotel:false, landmark:false };
+    });
+    state.cities = cities;
+    state.cash = [0,1,2,3].map(() => ({ mode:"bills", counts:{}, manual:0 }));
+  }
+
+  // ---- persistence ----
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        count: state.count, active: state.active, players: state.players,
+        cities: state.cities, cash: state.cash, prices: state.prices,
+        priceNoteSeen: state.priceNoteSeen, timer: state.timer
+      }));
+    } catch (e) { /* storage may be blocked; app still works */ }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const d = JSON.parse(raw);
+      if (!d || !d.cities) return false;
+      state.count = Math.min(4, Math.max(2, d.count || 4));
+      state.active = Math.min(3, Math.max(0, d.active || 0));
+      if (Array.isArray(d.players) && d.players.length === 4) state.players = d.players;
+      // merge cities so new versions don't break
+      blankGame();
+      Object.keys(state.cities).forEach(id => {
+        if (d.cities[id]) state.cities[id] = Object.assign(state.cities[id], d.cities[id]);
+      });
+      if (Array.isArray(d.cash) && d.cash.length === 4) state.cash = d.cash;
+      state.cash.forEach(c => { c.counts = c.counts || {}; });
+      const dp = defaultPrices();
+      Object.keys(dp).forEach(id => {
+        const saved = (d.prices && d.prices[id]) || null;
+        state.prices[id] = saved ? Object.assign({}, dp[id], saved) : dp[id];
+      });
+      state.prices = Object.assign(dp, state.prices);
+      state.priceNoteSeen = !!d.priceNoteSeen;
+      if (d.timer) {
+        state.timer = Object.assign(state.timer, d.timer);
+        if (state.timer.running) {
+          const rem = state.timer.endAt - Date.now();
+          if (rem > 0) { state.timer.remaining = rem; }
+          else { state.timer.running = false; state.timer.remaining = 0; }
+        }
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* =========================================================
+     HELPERS
+     ========================================================= */
+  const $ = (s, r=document) => r.querySelector(s);
+  const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+  const clamp = (n,a,b) => Math.min(b, Math.max(a, n));
+
+  // 마블(원 단위) -> "1,234만" / "12만 5천"
+  function fmtMan(units) {
+    const man = units / 10000;
+    if (!man) return "0";
+    const rounded = Math.round(man * 10) / 10;
+    return rounded.toLocaleString("ko-KR") + "만";
+  }
+  function fmtFull(units) {
+    return Math.round(units).toLocaleString("ko-KR");
+  }
+  function moneyChip(units) {
+    return fmtMan(units) + " 마블";
+  }
+  function tierPrice(cityId) {
+    const p = state.prices[cityId] || defaultPrices()[cityId];
+    return p;
+  }
+  function cityValue(cityId, c) {
+    const p = tierPrice(cityId);
+    if (TOURISTS.some(t => t.id === cityId)) return c.land ? (p.land * 10000) : 0;
+    let sum = 0;
+    if (c.land) sum += p.land;
+    if (c.villa) sum += p.villa;
+    if (c.building) sum += p.building;
+    if (c.hotel) sum += p.hotel;
+    if (c.landmark) sum += p.landmark;
+    return sum * 10000;
+  }
+  function cityCount(idx) {
+    let n = 0;
+    Object.keys(state.cities).forEach(id => {
+      const c = state.cities[id];
+      if (c.owner !== idx) return;
+      if (TOURISTS.some(t => t.id === id)) return;
+      if (c.land) n++;
+    });
+    return n;
+  }
+  function landmarkCount(idx) {
+    return Object.keys(state.cities).filter(id => state.cities[id].owner === idx && state.cities[id].landmark).length;
+  }
+  function landValue(idx) {
+    let sum = 0;
+    Object.keys(state.cities).forEach(id => {
+      const c = state.cities[id];
+      if (c.owner === idx) sum += cityValue(id, c);
+    });
+    return sum;
+  }
+  function cashValue(idx) {
+    const c = state.cash[idx];
+    if (!c) return 0;
+    if (c.mode === "manual") return Math.round((Number(c.manual) || 0) * 10000);
+    let sum = 0;
+    BILLS.forEach(b => { sum += (Number(c.counts[b.v]) || 0) * b.v; });
+    return sum;
+  }
+  function totalValue(idx) { return landValue(idx) + cashValue(idx); }
+
+  let toastTimer = null;
+  function toast(msg) {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 1900);
+  }
+
+  /* =========================================================
+     SOUND (Web Audio)
+     ========================================================= */
+  let actx = null;
+  function audio() {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      actx = new AC();
+    }
+    if (actx.state === "suspended") actx.resume();
+    return actx;
+  }
+  function tone(freq, startAt, dur, type, vol) {
+    const ac = audio(); if (!ac) return;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || "square";
+    o.frequency.setValueAtTime(freq, startAt);
+    g.gain.setValueAtTime(0, startAt);
+    g.gain.linearRampToValueAtTime(vol || .18, startAt + .012);
+    g.gain.exponentialRampToValueAtTime(.0008, startAt + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(startAt); o.stop(startAt + dur + .02);
+  }
+  function playAlarm(cycles) {
+    const ac = audio(); if (!ac) return;
+    const t0 = ac.currentTime + .02;
+    const n = cycles || 6;
+    for (let i = 0; i < n; i++) {
+      const b = t0 + i * 1.05;
+      tone(880, b, .22, "square", .16);
+      tone(1245, b + .24, .22, "square", .16);
+      tone(880, b + .48, .22, "square", .16);
+      tone(1245, b + .72, .18, "square", .16);
+      tone(220, b, .92, "sawtooth", .05);
+    }
+  }
+  function playFanfare() {
+    const ac = audio(); if (!ac) return;
+    const t0 = ac.currentTime + .02;
+    const notes = [[523.25,0],[659.25,.12],[783.99,.24],[1046.5,.38],[783.99,.56],[1046.5,.66],[1318.5,.8]];
+    notes.forEach(([f, d]) => { tone(f, t0 + d, .3, "triangle", .16); tone(f/2, t0 + d, .3, "sine", .1); });
+    [0,.12,.24,.38,.56,.66,.8].forEach((d,i) => tone(1568, t0 + d + .02, .12, "square", .05));
+  }
+  let alarmStopAt = 0;
+  function startAlarm() {
+    playAlarm(8);
+    alarmStopAt = Date.now() + 9000;
+  }
+  function stopAlarm() { alarmStopAt = 0; }
+
+  /* =========================================================
+     PLAYER STRIP
+     ========================================================= */
+  function buildPlayers() {
+    const wrap = $("#players");
+    wrap.innerHTML = "";
+    state.players.forEach((pl, i) => {
+      const el = document.createElement("div");
+      el.className = "pcard";
+      el.tabIndex = 0;
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-pressed", "false");
+      el.dataset.p = String(i);
+      el.style.setProperty("--pc", COLORS[i]);
+      el.innerHTML = `
+        <span class="crown" data-crown>👑</span>
+        <div class="pname">
+          <span class="pdot"></span>
+          <input type="text" maxlength="10" data-name="${i}" aria-label="플레이어 ${i+1} 이름" value="">
+        </div>
+        <div class="pstats">
+          <div class="stat"><b>땅값</b><span data-st="land">0</span></div>
+          <div class="stat"><b>현금</b><span data-st="cash">0</span></div>
+          <div class="stat total"><b>총 자산</b><span data-st="total">0</span></div>
+        </div>`;
+      const input = $("input", el);
+      input.value = state.players[i].name;
+      input.addEventListener("input", e => {
+        state.players[i].name = e.target.value.slice(0, 10);
+        updateNames(); save();
+      });
+      input.addEventListener("click", e => e.stopPropagation());
+      input.addEventListener("focus", () => { setActive(i); });
+      el.addEventListener("click", () => setActive(i));
+      el.addEventListener("keydown", e => {
+        if (e.target === el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setActive(i); }
+      });
+      wrap.appendChild(el);
+    });
+  }
+
+  function setCount(n) {
+    state.count = clamp(n, 2, 4);
+    if (state.active >= state.count) state.active = 0;
+    $$("[data-count]").forEach(b => b.classList.toggle("on", Number(b.dataset.count) === state.count));
+    $("#players").style.setProperty("--n", String(state.count));
+    updateActiveUI();
+    updatePlayers();
+    renderCash();
+    save();
+  }
+
+  function setActive(i) {
+    if (i >= state.count) return;
+    state.active = i;
+    updateActiveUI();
+    renderCash();
+    renderLandWho();
+    updatePlayers();
+    save();
+  }
+
+  function updatePlayers() {
+    $$("#players .pcard").forEach((el, i) => {
+      el.hidden = i >= state.count;
+      el.classList.toggle("on", i === state.active);
+      const st = { land: landValue(i), cash: cashValue(i), total: totalValue(i) };
+      $('[data-st="land"]', el).textContent = fmtMan(st.land);
+      $('[data-st="cash"]', el).textContent = fmtMan(st.cash);
+      $('[data-st="total"]', el).textContent = fmtMan(st.total);
+    });
+    // crown on the leader (only when there are assets)
+    const actives = [];
+    for (let i = 0; i < state.count; i++) actives.push({ i, v: totalValue(i) });
+    const max = Math.max(...actives.map(a => a.v));
+    $$("#players .pcard").forEach((el, i) => {
+      const crown = $("[data-crown]", el);
+      const show = max > 0 && totalValue(i) === max && i < state.count;
+      crown.style.opacity = show ? "1" : "0";
+    });
+    updateLandSum();
+    updateCashSum();
+    updateLandFoot();
+    renderCashList();
+  }
+
+  function updateLandFoot() {
+    const el = $("#landFoot");
+    if (!el) return;
+    let cities = 0, marks = 0, tours = 0;
+    Object.keys(state.cities).forEach(id => {
+      const c = state.cities[id];
+      if (c.owner !== state.active) return;
+      if (TOURISTS.some(t => t.id === id)) { if (c.land) tours++; return; }
+      if (c.land) cities++;
+      if (c.landmark) marks++;
+    });
+    el.innerHTML = `보유 도시 <b>${cities}곳</b> · 랜드마크 <b>${marks}개</b> · 관광지 <b>${tours}곳</b>` +
+      `<span style="margin-left:auto">${playerName(state.active)}의 땅값 <b>${fmtMan(landValue(state.active))}</b></span>`;
+  }
+
+  function renderCashList() {
+    const wrap = $("#cashList");
+    if (!wrap) return;
+    let html = '<div class="ttl">참여자별 현금</div>';
+    for (let i = 0; i < state.count; i++) {
+      html += `<button class="cashrow ${i === state.active ? "on" : ""}" type="button" data-goto="${i}">
+        <span class="dot" style="width:9px;height:9px;border-radius:50%;background:${COLORS[i]};display:inline-block"></span>
+        <span class="nm">${esc(playerName(i))}</span>
+        <span class="amt">${fmtMan(cashValue(i))}</span>
+      </button>`;
+    }
+    wrap.innerHTML = html;
+  }
+
+  function updateNames() {
+    updatePlayers();
+    $$("#players .pcard").forEach((el, i) => {
+      const input = $("input", el);
+      if (document.activeElement !== input) input.value = state.players[i].name;
+    });
+    renderLandWho();
+    // owner pills
+    Object.keys(state.cities).forEach(id => {
+      const c = state.cities[id];
+      const el = document.querySelector(`[data-city="${id}"] .owner span.olabel`);
+      if (el && c.owner !== null) el.textContent = playerName(c.owner);
+    });
+  }
+
+  const playerName = i => (state.players[i] && state.players[i].name) || ("플레이어 " + (i + 1));
+
+  function updateActiveUI() {
+    $$("#players .pcard").forEach((el, i) => {
+      el.classList.toggle("on", i === state.active);
+      el.setAttribute("aria-pressed", i === state.active ? "true" : "false");
+    });
+    const pc = COLORS[state.active];
+    ["#landWho", "#cashWho"].forEach(sel => {
+      const el = $(sel);
+      el.style.setProperty("--pc", pc);
+      el.style.borderColor = pc;
+    });
+    $$(".city").forEach(el => {
+      const c = state.cities[el.dataset.city];
+      const mine = c && c.owner === state.active;
+      el.classList.toggle("mine", !!mine);
+      el.classList.toggle("other", !!c && c.owner !== null && !mine);
+      if (mine) el.style.setProperty("--pc", pc);
+    });
+  }
+
+  function renderLandWho() {
+    $("#landWhoName").textContent = playerName(state.active);
+    $("#cashWhoName").textContent = playerName(state.active);
+  }
+  function updateLandSum() {
+    $("#landSum").textContent = fmtMan(landValue(state.active)) + " 마블";
+  }
+  function updateCashSum() {
+    const v = cashValue(state.active);
+    $("#cashSum").textContent = fmtMan(v) + " 마블";
+    $("#cashLine").textContent = fmtMan(v) + " 마블";
+  }
+
+  /* =========================================================
+     LAND PANEL
+     ========================================================= */
+  function buildLand() {
+    const body = $("#landBody");
+    body.innerHTML = "";
+    const grid = document.createElement("div");
+    grid.className = "citygrid";
+
+    GROUPS.forEach(g => g.cities.forEach(city => {
+      grid.appendChild(cityCard(city, g));
+    }));
+    TOURISTS.forEach(t => grid.appendChild(touristCard(t)));
+    body.appendChild(grid);
+    updateLandCardVisuals();
+  }
+
+  function cityCard(city, group) {
+    const el = document.createElement("div");
+    el.className = "city";
+    el.dataset.city = city.id;
+    el.style.setProperty("--pc", COLORS[state.active]);
+    el.style.borderLeftColor = group.color;
+    el.innerHTML = `
+      <div class="ctop">
+        <span class="cname" title="${city.name}">${city.name}</span>
+        <span class="cval" data-val>0</span>
+      </div>
+      <button class="owner" type="button" data-owner>
+        <span class="od"></span><span class="olabel">빈 땅</span>
+      </button>
+      <div class="blds">
+        ${PRICE_KEYS.map(k => `<button class="bld ${k==='landmark'?'mark':''}" type="button" data-b="${k}">${PRICE_LABELS[k]}</button>`).join("")}
+      </div>`;
+    $("[data-owner]", el).addEventListener("click", () => tapOwner(city.id));
+    $$("[data-b]", el).forEach(btn => btn.addEventListener("click", e => {
+      e.stopPropagation();
+      tapBuilding(city.id, btn.dataset.b);
+    }));
+    return el;
+  }
+
+  function touristCard(t) {
+    const el = document.createElement("div");
+    el.className = "city tourist";
+    el.dataset.city = t.id;
+    el.style.setProperty("--pc", COLORS[state.active]);
+    el.style.borderLeftColor = "#20B2AA";
+    el.innerHTML = `
+      <div class="ctop">
+        <span class="cname">${t.name}</span>
+        <span class="cval">${esc(t.kind)}·10만</span>
+      </div>
+      <button class="owner" type="button" data-owner>
+        <span class="od"></span><span class="olabel">미보유</span>
+      </button>
+      <div class="blds">
+        <button class="bld" type="button" data-b="land">보유 (10만)</button>
+      </div>`;
+    $("[data-owner]", el).addEventListener("click", () => tapOwner(t.id));
+    $("[data-b]", el).addEventListener("click", e => { e.stopPropagation(); tapBuilding(t.id, "land"); });
+    return el;
+  }
+  function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+  function tapOwner(id) {
+    const c = state.cities[id];
+    const tourist = TOURISTS.some(t => t.id === id);
+    if (c.owner === null) {
+      c.owner = state.active;
+      c.land = true;                        // 도시를 사면 땅은 기본
+      if (tourist) { c.villa = c.building = c.hotel = c.landmark = false; }
+      toast(playerName(state.active) + " · " + cityLabel(id) + " 구매!");
+    } else if (c.owner === state.active) {
+      releaseCity(id);
+      toast(cityLabel(id) + " 소유 해제");
+    } else {
+      const prev = playerName(c.owner);
+      c.owner = state.active;
+      c.land = true;
+      c.villa = c.building = c.hotel = c.landmark = false;
+      toast(prev + " → " + playerName(state.active) + " · " + cityLabel(id) + " 인수");
+    }
+    afterChange();
+  }
+
+  function releaseCity(id) {
+    const c = state.cities[id];
+    c.owner = null;
+    c.land = c.villa = c.building = c.hotel = c.landmark = false;
+  }
+
+  function tapBuilding(id, key) {
+    const c = state.cities[id];
+    if (c.owner !== state.active) {
+      // 다른 사람 땅/빈 땅: 먼저 소유권을 가져온다
+      tapOwner(id);
+      return;
+    }
+    const tourist = TOURISTS.some(t => t.id === id);
+    if (tourist) {
+      c.land = !c.land;
+      if (!c.land) c.owner = null;
+      afterChange();
+      return;
+    }
+    if (key === "landmark") {
+      const on = !c.landmark;
+      c.landmark = on;
+      if (on) { c.land = true; c.villa = true; c.building = true; c.hotel = true; }
+    } else {
+      const order = ["land", "villa", "building", "hotel"];
+      const idx = order.indexOf(key);
+      const on = !c[key];
+      c[key] = on;
+      if (on) {
+        // 앞 단계는 자동으로 함께 세워진다
+        for (let i = 0; i < idx; i++) c[order[i]] = true;
+        if (c.landmark) { /* 랜드마크 유지 */ }
+      } else {
+        // 뒤 단계는 함께 내려간다
+        for (let i = idx + 1; i < order.length; i++) c[order[i]] = false;
+        c.landmark = false;
+      }
+    }
+    afterChange();
+  }
+
+  function cityLabel(id) {
+    for (const g of GROUPS) {
+      const c = g.cities.find(x => x.id === id);
+      if (c) return c.name;
+    }
+    const t = TOURISTS.find(x => x.id === id);
+    return t ? t.name : id;
+  }
+
+  function updateLandCardVisuals() {
+    const pc = COLORS[state.active];
+    Object.keys(state.cities).forEach(id => {
+      const c = state.cities[id];
+      const el = document.querySelector(`[data-city="${id}"]`);
+      if (!el) return;
+      const mine = c.owner === state.active;
+      el.classList.toggle("mine", mine);
+      el.classList.toggle("other", c.owner !== null && !mine);
+      if (mine) el.style.setProperty("--pc", pc);
+      const label = $(".olabel", el);
+      const od = $(".od", el);
+      if (c.owner === null) {
+        label.textContent = el.classList.contains("tourist") ? "미보유" : "빈 땅";
+        od.style.background = "#c8d4e4";
+      } else {
+        label.textContent = playerName(c.owner);
+        od.style.background = COLORS[c.owner];
+        if (!mine) {
+          od.style.background = COLORS[c.owner];
+        }
+      }
+      const valEl = $("[data-val]", el);
+      if (valEl) {
+        valEl.textContent = c.owner === null
+          ? (el.classList.contains("tourist") ? valEl.textContent : "땅 " + fmtMan(tierPrice(id).land * 10000))
+          : fmtMan(cityValue(id, c));
+      }
+      $$("[data-b]", el).forEach(b => {
+        b.classList.toggle("on", !!c[b.dataset.b]);
+      });
+    });
+  }
+
+  function afterChange() {
+    updateLandCardVisuals();
+    updateActiveUI();
+    updatePlayers();
+    save();
+  }
+
+  /* =========================================================
+     CASH PANEL
+     ========================================================= */
+  function buildBills() {
+    const wrap = $("#billsView");
+    wrap.innerHTML = "";
+    BILLS.forEach(b => {
+      const row = document.createElement("div");
+      row.className = "bill";
+      row.innerHTML = `
+        <div class="billlabel"><span class="money" style="background:${b.color}"></span>${b.label}</div>
+        <button class="stepper" type="button" data-step="-1" data-v="${b.v}" aria-label="${b.label} 줄이기">−</button>
+        <input class="cnt" type="number" inputmode="numeric" min="0" max="999" step="1" data-cnt="${b.v}" aria-label="${b.label} 장수">
+        <button class="stepper" type="button" data-step="1" data-v="${b.v}" aria-label="${b.label} 늘리기">+</button>
+        <div class="sub" data-sub="${b.v}">0</div>`;
+      wrap.appendChild(row);
+    });
+    wrap.addEventListener("click", e => {
+      const btn = e.target.closest("[data-step]");
+      if (!btn) return;
+      const v = Number(btn.dataset.v);
+      const d = Number(btn.dataset.step);
+      const c = state.cash[state.active];
+      c.counts = c.counts || {};
+      const cur = Number(c.counts[v]) || 0;
+      c.counts[v] = clamp(cur + d, 0, 999);
+      renderCash();
+      save();
+    });
+    wrap.addEventListener("input", e => {
+      const inp = e.target.closest("[data-cnt]");
+      if (!inp) return;
+      const v = Number(inp.dataset.cnt);
+      const c = state.cash[state.active];
+      c.counts = c.counts || {};
+      c.counts[v] = clamp(parseInt(inp.value || "0", 10) || 0, 0, 999);
+      updateBillSubs();
+      updatePlayers();
+      save();
+    });
+  }
+
+  function updateBillSubs() {
+    const c = state.cash[state.active];
+    c.counts = c.counts || {};
+    BILLS.forEach(b => {
+      const n = Number(c.counts[b.v]) || 0;
+      const sub = document.querySelector(`[data-sub="${b.v}"]`);
+      if (sub) sub.textContent = n ? fmtMan(n * b.v) + " 마블" : "";
+      const inp = document.querySelector(`[data-cnt="${b.v}"]`);
+      if (inp && document.activeElement !== inp) inp.value = n ? String(n) : "";
+    });
+  }
+
+  function renderCash() {
+    const c = state.cash[state.active];
+    const billsMode = c.mode !== "manual";
+    $("#modeBills").classList.toggle("on", billsMode);
+    $("#modeManual").classList.toggle("on", !billsMode);
+    $("#billsView").hidden = !billsMode;
+    $("#manualView").hidden = billsMode;
+
+    if (billsMode) {
+      updateBillSubs();
+    } else {
+      const mi = $("#manualInput");
+      if (document.activeElement !== mi) mi.value = c.manual ? String(c.manual) : "";
+      $("#manualHint").textContent = c.manual
+        ? "= " + fmtMan(c.manual * 10000) + " 마블 (" + fmtFull(c.manual * 10000) + ")"
+        : "예: 250 → 250만 마블 (2,500,000). 소수점도 돼요 (0.5 = 5천).";
+    }
+    updateCashSum();
+  }
+
+  /* =========================================================
+     TIMER
+     ========================================================= */
+  let tickId = null;
+  let wakeLock = null;
+
+  async function requestWakeLock() {
+    try {
+      if (!("wakeLock" in navigator) || !navigator.wakeLock) return;
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } catch (e) { wakeLock = null; }
+  }
+  function releaseWakeLock() {
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+  }
+
+  function fmtClock(ms) {
+    const t = Math.max(0, Math.ceil(ms / 1000));
+    const h = Math.floor(t / 3600);
+    const m = Math.floor((t % 3600) / 60);
+    const s = t % 60;
+    const pad = n => String(n).padStart(2, "0");
+    return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : pad(m) + ":" + pad(s);
+  }
+
+  function paintTimer() {
+    const box = $("#timerBox");
+    const clock = $("#clock");
+    const rem = state.timer.running ? Math.max(0, state.timer.endAt - Date.now()) : state.timer.remaining;
+    clock.textContent = fmtClock(rem);
+    box.classList.toggle("warn", rem > 0 && rem <= 5 * 60 * 1000);
+    box.classList.toggle("done", rem <= 0);
+    const startBtn = $("#btnTimerStart");
+    startBtn.textContent = state.timer.running ? "❚❚" : "▶";
+    startBtn.setAttribute("aria-label", state.timer.running ? "타이머 일시정지" : "타이머 시작");
+  }
+
+  function startTimer() {
+    if (state.timer.remaining <= 0) state.timer.remaining = state.timer.duration;
+    state.timer.endAt = Date.now() + state.timer.remaining;
+    state.timer.running = true;
+    audio();                       // unlock audio on user gesture
+    requestWakeLock();
+    paintTimer(); save();
+    if (!tickId) tickId = setInterval(tick, 200);
+  }
+  function pauseTimer() {
+    state.timer.remaining = Math.max(0, state.timer.endAt - Date.now());
+    state.timer.running = false;
+    releaseWakeLock();
+    paintTimer(); save();
+  }
+  function resetTimer() {
+    state.timer.running = false;
+    state.timer.remaining = state.timer.duration;
+    stopAlarm();
+    closeOverlay("ovEnd");
+    paintTimer(); save();
+  }
+  function tick() {
+    if (!state.timer.running) { paintTimer(); return; }
+    const rem = state.timer.endAt - Date.now();
+    if (rem <= 0) {
+      state.timer.running = false;
+      state.timer.remaining = 0;
+      paintTimer();
+      openOverlay("ovEnd");
+      startAlarm();
+      releaseWakeLock();
+      save();
+      return;
+    }
+    paintTimer();
+  }
+  function setDuration(minutes) {
+    const ms = clamp(Math.round(minutes * 60 * 1000), 60000, 240 * 60 * 1000);
+    state.timer.duration = ms;
+    state.timer.remaining = ms;
+    state.timer.running = false;
+    stopAlarm();
+    closeOverlay("ovEnd");
+    paintTimer(); save();
+  }
+  function adjust(minutes) {
+    const d = minutes * 60 * 1000;
+    if (state.timer.running) {
+      state.timer.endAt = Math.max(Date.now(), state.timer.endAt + d);
+      state.timer.remaining = state.timer.endAt - Date.now();
+      if (state.timer.remaining <= 0) { state.timer.running = false; state.timer.remaining = 0; }
+    } else {
+      state.timer.remaining = clamp(state.timer.remaining + d, 0, 240 * 60 * 1000);
+    }
+    paintTimer(); save();
+  }
+
+  /* =========================================================
+     RANKING
+     ========================================================= */
+  function computeRanking() {
+    const rows = [];
+    for (let i = 0; i < state.count; i++) {
+      rows.push({
+        idx: i, name: playerName(i), color: COLORS[i],
+        land: landValue(i), cash: cashValue(i), total: totalValue(i),
+        cities: cityCount(i), landmarks: landmarkCount(i)
+      });
+    }
+    rows.sort((a, b) => b.total - a.total || b.land - a.land || a.idx - b.idx);
+    let rank = 0, prev = null;
+    rows.forEach((r, i) => {
+      if (prev !== null && r.total === prev) { r.rank = rank; r.tie = true; }
+      else { rank = i + 1; r.rank = rank; prev = r.total; }
+    });
+    // 같은 금액이 끼면 모두 공동 표시
+    rows.forEach((r, i) => {
+      const sameBefore = i > 0 && rows[i - 1].total === r.total;
+      const sameAfter = i < rows.length - 1 && rows[i + 1].total === r.total;
+      if (sameBefore || sameAfter) r.tie = true;
+    });
+    return rows;
+  }
+
+  function medalFor(rank) {
+    return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "🎖️";
+  }
+
+  function renderRanking() {
+    const rows = computeRanking();
+    const body = $("#rankBody");
+    const top = rows.slice(0, 3);
+    const order = [1, 0, 2];       // 2위 / 1위 / 3위 배치
+    let podium = '<div class="podium">';
+    order.forEach((oi, pos) => {
+      const r = top[oi];
+      const cls = pos === 1 ? "first" : "";
+      if (!r) { podium += `<div class="pod" style="visibility:hidden"></div>`; return; }
+      podium += `<div class="pod ${cls}" style="--pc:${r.color}">
+        <div class="medal">${medalFor(r.rank)}</div>
+        <div class="pn">${esc(r.name)}</div>
+        <div class="pa">${fmtMan(r.total)}</div>
+        <div class="pbar"></div>
+      </div>`;
+    });
+    podium += "</div>";
+
+    let list = '<div class="ranklist">';
+    list += `<div class="rrow head"><div>순위</div><div>참여자</div><div style="text-align:right">땅값</div><div style="text-align:right">현금</div><div style="text-align:right">총 자산</div><div style="text-align:right">도시 · 랜드마크</div></div>`;
+    rows.forEach(r => {
+      const title = r.tie ? "공동 " + r.rank + "위" : (r.rank === 1 ? "우승" : r.rank + "위");
+      list += `<div class="rrow ${r.rank === 1 ? "win" : ""}">
+        <div class="rk">${medalFor(r.rank)} ${r.tie ? "공동" + r.rank : r.rank}위</div>
+        <div class="rn" style="--pc:${r.color}"><span class="dot"></span>${esc(r.name)}<span style="font-size:10px;color:#8fa0b8;font-weight:800;margin-left:4px">${title}</span></div>
+        <div class="num">${fmtMan(r.land)}</div>
+        <div class="num">${fmtMan(r.cash)}</div>
+        <div class="num big">${fmtMan(r.total)}</div>
+        <div class="num" style="font-size:12px">${r.cities}곳 · ${r.landmarks}개</div>
+      </div>`;
+    });
+    list += "</div>";
+    if (rows.every(r => r.total === 0)) {
+      list += '<p style="text-align:center;font-size:12px;color:#8fa0b8;font-weight:800;margin:10px 0 0">아직 입력된 자산이 없어요. 도시와 현금을 먼저 기록해 주세요.</p>';
+    }
+    body.innerHTML = podium + list;
+  }
+
+  function celebrate() {
+    playFanfare();
+    const modal = $("#rankModal");
+    const colors = ["#E53935", "#1E88E5", "#FBC02D", "#43A047", "#8E6BD6", "#F58A33"];
+    for (let i = 0; i < 28; i++) {
+      const s = document.createElement("span");
+      s.className = "confetti";
+      s.style.left = Math.random() * 100 + "%";
+      s.style.top = "-10px";
+      s.style.background = colors[i % colors.length];
+      s.style.animationDelay = (Math.random() * .6) + "s";
+      s.style.animationDuration = (1.8 + Math.random() * 1.4) + "s";
+      modal.appendChild(s);
+      setTimeout(() => s.remove(), 3600);
+    }
+  }
+
+  /* =========================================================
+     PRICE MODAL
+     ========================================================= */
+  function renderPriceEditor() {
+    const wrap = $("#priceEditor");
+    let html = '<table class="ptable"><thead><tr><th>도시</th>' +
+      PRICE_KEYS.map(k => `<th>${PRICE_LABELS[k]}</th>`).join("") + "</tr></thead><tbody>";
+    GROUPS.forEach(g => {
+      html += `<tr><td colspan="6" style="padding:6px 0 0"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${g.color};margin-right:6px"></span><b style="font-size:12px">${g.name}</b></td></tr>`;
+      g.cities.forEach(c => {
+        html += `<tr><td class="grp">${c.name}</td>` +
+          PRICE_KEYS.map(k => `<td><input type="number" min="0" step="1" data-pid="${c.id}" data-pk="${k}" value="${state.prices[c.id][k]}"></td>`).join("") + "</tr>";
+      });
+    });
+    html += `<tr><td colspan="6" style="padding:8px 0 0"><b style="font-size:12px">🏝️ 관광지 (보유 비용)</b></td></tr>`;
+    TOURISTS.forEach(t => {
+      html += `<tr><td class="grp">${t.name}</td><td><input type="number" min="0" step="1" data-pid="${t.id}" data-pk="land" value="${state.prices[t.id].land}"></td><td colspan="4" style="font-size:11px;color:#8fa0b8;font-weight:700;padding-left:6px">${t.kind} 관광지 · 보유 시 이 금액</td></tr>`;
+    });
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
+    wrap.oninput = e => {
+      const inp = e.target.closest("input[data-pid]");
+      if (!inp) return;
+      const v = clamp(parseInt(inp.value || "0", 10) || 0, 0, 100000);
+      state.prices[inp.dataset.pid][inp.dataset.pk] = v;
+      afterChange();
+    };
+  }
+
+  /* =========================================================
+     OVERLAYS
+     ========================================================= */
+  function openOverlay(id) { $("#" + id).classList.add("open"); }
+  function closeOverlay(id) { $("#" + id).classList.remove("open"); }
+  function closeAll() { $$(".overlay").forEach(o => o.classList.remove("open")); }
+
+  /* =========================================================
+     WIRING
+     ========================================================= */
+  function wire() {
+    // 참여 인원 2~4명
+    $$("[data-count]").forEach(b => b.addEventListener("click", () => {
+      setCount(Number(b.dataset.count));
+      toast(b.dataset.count + "명으로 시작해요");
+    }));
+
+    $("#cashList").addEventListener("click", e => {
+      const b = e.target.closest("[data-goto]");
+      if (b) setActive(Number(b.dataset.goto));
+    });
+
+    // players count? (2~4) -> click on a hidden card is not possible; use actions menu
+    $("#btnTimerStart").addEventListener("click", () => {
+      if (state.timer.running) pauseTimer(); else startTimer();
+    });
+    $("#btnTimerReset").addEventListener("click", resetTimer);
+    $$("[data-adj]").forEach(b => b.addEventListener("click", () => {
+      adjust(Number(b.dataset.adj));
+    }));
+    $$("[data-preset]").forEach(b => b.addEventListener("click", () => {
+      setDuration(Number(b.dataset.preset));
+      toast(b.dataset.preset + "분으로 맞췄어요");
+    }));
+    $("#customMin").addEventListener("change", e => {
+      const v = Number(e.target.value);
+      if (v > 0) { setDuration(v); e.target.value = ""; toast(v + "분으로 맞췄어요"); }
+    });
+    $("#btnBell").addEventListener("click", () => {
+      playAlarm(2);
+      toast("🔔 알람 소리 테스트");
+    });
+    $("#btnEndStop").addEventListener("click", () => { stopAlarm(); closeOverlay("ovEnd"); });
+
+    $("#btnPrices").addEventListener("click", () => {
+      renderPriceEditor();
+      openOverlay("ovPrices");
+      state.priceNoteSeen = true;
+      $("#priceNote").hidden = true;
+      save();
+    });
+    $("#btnPriceReset").addEventListener("click", () => {
+      state.prices = defaultPrices();
+      renderPriceEditor();
+      afterChange();
+      toast("기본 가격표로 되돌렸어요");
+    });
+    $("#btnNewGame").addEventListener("click", () => openOverlay("ovConfirm"));
+    $("#btnConfirmNew").addEventListener("click", () => {
+      blankGame();
+      closeOverlay("ovConfirm");
+      afterChange();
+      renderCash();
+      toast("새 게임을 시작합니다");
+    });
+    $("#btnRanking").addEventListener("click", () => {
+      renderRanking();
+      openOverlay("ovRanking");
+      celebrate();
+    });
+    $("#btnCelebrate").addEventListener("click", celebrate);
+    $("#noteClose").addEventListener("click", () => {
+      state.priceNoteSeen = true;
+      $("#priceNote").hidden = true;
+      save();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        if (state.timer.running) { audio(); requestWakeLock(); tick(); }
+        else if (actx && actx.state === "suspended") actx.resume();
+      }
+    });
+
+    $$("[data-close]").forEach(b => b.addEventListener("click", () => closeOverlay(b.dataset.close)));
+    $$(".overlay").forEach(o => o.addEventListener("click", e => {
+      if (e.target === o && o.id !== "ovEnd") o.classList.remove("open");
+    }));
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") {
+        if ($("#ovEnd").classList.contains("open")) { stopAlarm(); closeOverlay("ovEnd"); }
+        else closeAll();
+      }
+    });
+
+    // cash mode
+    $("#modeBills").addEventListener("click", () => { state.cash[state.active].mode = "bills"; renderCash(); updatePlayers(); save(); });
+    $("#modeManual").addEventListener("click", () => { state.cash[state.active].mode = "manual"; renderCash(); updatePlayers(); save(); });
+    $("#manualInput").addEventListener("input", e => {
+      const c = state.cash[state.active];
+      const v = Number(e.target.value);
+      c.manual = isNaN(v) || v < 0 ? 0 : Math.round(v * 10) / 10;
+      if (document.activeElement === e.target) {
+        $("#manualHint").textContent = c.manual
+          ? "= " + fmtMan(c.manual * 10000) + " 마블 (" + fmtFull(c.manual * 10000) + ")"
+          : "예: 250 → 250만 마블 (2,500,000). 소수점도 돼요 (0.5 = 5천).";
+      }
+      updateCashSum(); updatePlayers(); save();
+    });
+    $$("#manualView [data-add]").forEach(b => b.addEventListener("click", () => {
+      const c = state.cash[state.active];
+      const add = Number(b.dataset.add);
+      if (b.id === "btnManualClear") c.manual = 0;
+      else c.manual = Math.max(0, Math.round((Number(c.manual) || 0) + add) * 10 / 10);
+      $("#manualInput").value = c.manual ? String(c.manual) : "";
+      $("#manualHint").textContent = c.manual
+        ? "= " + fmtMan(c.manual * 10000) + " 마블 (" + fmtFull(c.manual * 10000) + ")"
+        : "예: 250 → 250만 마블 (2,500,000). 소수점도 돼요 (0.5 = 5천).";
+      updateCashSum(); updatePlayers(); save();
+    }));
+
+    // player count: long-press? simpler: a small control appears on the strip
+  }
+
+  /* =========================================================
+     BOOT
+     ========================================================= */
+  function boot() {
+    const restored = load();
+    if (!restored) blankGame();
+    buildPlayers();
+    buildLand();
+    buildBills();
+    wire();
+    if (!restored) { state.cash.forEach(() => {}); }
+    $("#players").style.setProperty("--n", String(state.count));
+    $$("[data-count]").forEach(b => b.classList.toggle("on", Number(b.dataset.count) === state.count));
+    updateNames();
+    updateActiveUI();
+    renderCash();
+    updatePlayers();
+    $("#priceNote").hidden = state.priceNoteSeen;
+    paintTimer();
+    if (state.timer.running) tickId = setInterval(tick, 200);
+    if (state.timer.running) tick();
+    save();
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
