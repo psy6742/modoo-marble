@@ -114,7 +114,15 @@
   .stat span{display:block; font-size:13px; font-weight:900; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .stat.total{background:#eef6ff; background:color-mix(in srgb, var(--pc) 14%, #fff);}
   .stat.total span{font-size:15px;}
-  .pcard .crown{position:absolute; right:7px; top:4px; font-size:14px; opacity:0;}
+  .pcard .crown{position:absolute; left:-1px; top:2px; font-size:11px; line-height:1; opacity:0; z-index:1; pointer-events:none; filter:drop-shadow(0 1px 1px rgba(0,0,0,.3));}
+
+  /* player color picker */
+  .palette{display:flex; align-items:center; gap:2px; flex:0 0 auto; padding:1px 3px; border-radius:999px; background:#f1f6fd; border:1px solid #e3ecf7;}
+  .palette .sw{width:22px; height:22px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .palette .sw::before{content:""; width:12px; height:12px; border-radius:50%; background:var(--c); opacity:.5; transition:opacity .12s ease, box-shadow .12s ease;}
+  .palette .sw.on::before{opacity:1; box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--c);}
+  .palette .sw:active::before{opacity:.85; box-shadow:none;}
+  .palette .sw:focus-visible{outline:2px solid #9ec2ff; outline-offset:1px;}
 
   /* ---------- panels ---------- */
   .panels{display:grid; grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); gap:8px; flex:1 1 auto; min-height:0;}
@@ -154,13 +162,14 @@
   .city.mine .owner{background:#eef6ff; background:color-mix(in srgb, var(--pc) 12%, #fff); border-style:solid; border-color:var(--pc); color:var(--ink);}
   .city.mine .owner .od{background:var(--pc);}
   .city.other .owner{background:#eef2f8; border-style:solid; border-color:#d5dfeb;}
-  .blds{display:none; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px;}
+  .blds{display:none; grid-template-columns:repeat(4,minmax(0,1fr)); gap:2px;}
   .city.mine .blds{display:grid;}
   .bld{
     height:26px; border-radius:6px; font-size:10.5px; font-weight:800; letter-spacing:-.4px;
     background:#f1f5fb; color:#7b8ba3; border:1.5px solid #e2eaf5;
     display:flex; align-items:center; justify-content:center; padding:0 1px; white-space:nowrap;
   }
+  .bld.mark{grid-column:1 / -1; height:22px; font-size:10px; letter-spacing:-.2px;}
   .bld:active{transform:translateY(1px);}
   .bld.on{background:var(--pc); color:#fff; border-color:rgba(0,0,0,.25); box-shadow:inset 0 -2px 0 rgba(0,0,0,.18);}
   .bld.mark.on{background:linear-gradient(180deg,#ffd76a,#f0a80f); color:#3d2a00; border-color:#d99b06;}
@@ -292,6 +301,10 @@
     .timer{gap:4px; padding:4px 6px;}
     .timer .clock{font-size:20px; min-width:74px;}
     .pname input{font-size:15px;}
+    .pname{gap:5px;}
+    .palette{gap:1px; padding:1px 2px;}
+    .palette .sw{width:20px; height:20px;}
+    .palette .sw::before{width:11px; height:11px;}
     .stat span{font-size:12px;}
     .stat.total span{font-size:14px;}
     .citygrid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));}
@@ -489,6 +502,7 @@
      DATA
      ========================================================= */
   const COLORS = ["#E53935", "#1E88E5", "#FBC02D", "#43A047"];
+  const COLOR_NAMES = ["빨강", "파랑", "노랑", "초록"];
 
   // 보드 색상 그룹 (가격 오름차순). 만 마블 단위.
   const GROUPS = [
@@ -544,9 +558,10 @@
     { v:100000,  label:"10만",  color:"#90BE6D" },
     { v:50000,   label:"5만",   color:"#4D96FF" },
     { v:10000,   label:"1만",   color:"#B07BE8" },
-    { v:5000,    label:"5천",   color:"#F0739B" },
-    { v:1000,    label:"1천",   color:"#6FC3C0" }
+    { v:5000,    label:"5천",   color:"#F0739B" }
   ];
+  // 실제 게임에는 천원(1천)권이 없다. 저장된 옛 장수는 load()에서 걸러진다.
+  const BILL_VALUES = BILLS.map(b => b.v);
 
   const PRICE_KEYS = ["land","villa","building","hotel","landmark"];
   const PRICE_LABELS = { land:"땅", villa:"빌라", building:"빌딩", hotel:"호텔", landmark:"랜드마크" };
@@ -568,8 +583,8 @@
     count: 4,
     active: 0,
     players: [
-      { name:"플레이어 1" }, { name:"플레이어 2" },
-      { name:"플레이어 3" }, { name:"플레이어 4" }
+      { name:"플레이어 1", color:0 }, { name:"플레이어 2", color:1 },
+      { name:"플레이어 3", color:2 }, { name:"플레이어 4", color:3 }
     ],
     cities: {},    // id -> { owner: playerIdx|null, land, villa, building, hotel, landmark }
     cash: [],      // per player { mode:'bills'|'manual', counts:{}, manual:0 }
@@ -608,14 +623,26 @@
       if (!d || !d.cities) return false;
       state.count = Math.min(4, Math.max(2, d.count || 4));
       state.active = Math.min(3, Math.max(0, d.active || 0));
-      if (Array.isArray(d.players) && d.players.length === 4) state.players = d.players;
+      if (Array.isArray(d.players) && d.players.length === 4 && d.players.every(p => p && typeof p === "object")) state.players = d.players;
+      ensureColors();
       // merge cities so new versions don't break
       blankGame();
       Object.keys(state.cities).forEach(id => {
         if (d.cities[id]) state.cities[id] = Object.assign(state.cities[id], d.cities[id]);
       });
       if (Array.isArray(d.cash) && d.cash.length === 4) state.cash = d.cash;
-      state.cash.forEach(c => { c.counts = c.counts || {}; });
+      state.cash.forEach(c => {
+        c.counts = c.counts || {};
+        // 없는 권종(예전 1천권)의 장수는 버린다
+        const clean = {};
+        BILL_VALUES.forEach(v => {
+          const n = clamp(parseInt(c.counts[v], 10) || 0, 0, 999);
+          if (n > 0) clean[v] = n;
+        });
+        c.counts = clean;
+        c.manual = Math.max(0, Number(c.manual) || 0);
+        if (c.mode !== "manual") c.mode = "bills";
+      });
       const dp = defaultPrices();
       Object.keys(dp).forEach(id => {
         const saved = (d.prices && d.prices[id]) || null;
@@ -767,6 +794,7 @@
   function buildPlayers() {
     const wrap = $("#players");
     wrap.innerHTML = "";
+    ensureColors();
     state.players.forEach((pl, i) => {
       const el = document.createElement("div");
       el.className = "pcard";
@@ -774,12 +802,15 @@
       el.setAttribute("role", "button");
       el.setAttribute("aria-pressed", "false");
       el.dataset.p = String(i);
-      el.style.setProperty("--pc", COLORS[i]);
+      el.style.setProperty("--pc", pcolor(i));
       el.innerHTML = `
         <span class="crown" data-crown>👑</span>
         <div class="pname">
           <span class="pdot"></span>
           <input type="text" maxlength="10" data-name="${i}" aria-label="플레이어 ${i+1} 이름" value="">
+          <div class="palette" role="radiogroup" aria-label="플레이어 ${i+1} 색깔">
+            ${COLORS.map((c, ci) => `<button class="sw" type="button" role="radio" data-color="${ci}" aria-checked="false" aria-label="${COLOR_NAMES[ci]}" title="${COLOR_NAMES[ci]}" style="--c:${c}"></button>`).join("")}
+          </div>
         </div>
         <div class="pstats">
           <div class="stat"><b>땅값</b><span data-st="land">0</span></div>
@@ -794,12 +825,61 @@
       });
       input.addEventListener("click", e => e.stopPropagation());
       input.addEventListener("focus", () => { setActive(i); });
+      const palette = $(".palette", el);
+      palette.addEventListener("click", e => {
+        e.stopPropagation();
+        const sw = e.target.closest(".sw");
+        if (sw) pickColor(i, Number(sw.dataset.color));
+      });
       el.addEventListener("click", () => setActive(i));
       el.addEventListener("keydown", e => {
         if (e.target === el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setActive(i); }
       });
       wrap.appendChild(el);
     });
+    applyColors();
+  }
+
+  // 참여자별 색 (index -> COLORS의 인덱스)
+  function ensureColors() {
+    state.players.forEach((p, i) => {
+      if (!p) return;
+      const c = Number(p.color);
+      if (!(Number.isInteger(c) && c >= 0 && c < COLORS.length)) p.color = i;
+    });
+  }
+  function pcolor(i) {
+    const p = state.players[i];
+    const c = p ? Number(p.color) : i;
+    return COLORS[(Number.isInteger(c) && c >= 0 && c < COLORS.length) ? c : (i % COLORS.length)] || COLORS[0];
+  }
+
+  function applyColors() {
+    $$("#players .pcard").forEach((el, i) => {
+      const pc = pcolor(i);
+      const cur = state.players[i] ? Number(state.players[i].color) : i;
+      el.style.setProperty("--pc", pc);
+      const pd = $(".pdot", el);
+      if (pd) pd.style.background = pc;
+      $$(".palette .sw", el).forEach(sw => {
+        const on = Number(sw.dataset.color) === cur;
+        sw.classList.toggle("on", on);
+        sw.setAttribute("aria-checked", on ? "true" : "false");
+      });
+    });
+  }
+
+  function pickColor(i, ci) {
+    if (!(ci >= 0 && ci < COLORS.length)) return;
+    ensureColors();
+    if (state.players[i].color === ci) return;
+    const prev = state.players[i].color;
+    const other = state.players.findIndex((p, j) => j !== i && p.color === ci);
+    state.players[i].color = ci;
+    if (other >= 0) state.players[other].color = prev;   // 같은 색이 겹치지 않게 자리 교환
+    applyColors();
+    afterChange();
+    toast(playerName(i) + " 색 → " + COLOR_NAMES[ci] + (other >= 0 ? " · " + playerName(other) + "와 교환" : ""));
   }
 
   function setCount(n) {
@@ -824,6 +904,7 @@
   }
 
   function updatePlayers() {
+    applyColors();
     $$("#players .pcard").forEach((el, i) => {
       el.hidden = i >= state.count;
       el.classList.toggle("on", i === state.active);
@@ -868,7 +949,7 @@
     let html = '<div class="ttl">참여자별 현금</div>';
     for (let i = 0; i < state.count; i++) {
       html += `<button class="cashrow ${i === state.active ? "on" : ""}" type="button" data-goto="${i}">
-        <span class="dot" style="width:9px;height:9px;border-radius:50%;background:${COLORS[i]};display:inline-block"></span>
+        <span class="dot" style="width:9px;height:9px;border-radius:50%;background:${pcolor(i)};display:inline-block"></span>
         <span class="nm">${esc(playerName(i))}</span>
         <span class="amt">${fmtMan(cashValue(i))}</span>
       </button>`;
@@ -898,7 +979,7 @@
       el.classList.toggle("on", i === state.active);
       el.setAttribute("aria-pressed", i === state.active ? "true" : "false");
     });
-    const pc = COLORS[state.active];
+    const pc = pcolor(state.active);
     ["#landWho", "#cashWho"].forEach(sel => {
       const el = $(sel);
       el.style.setProperty("--pc", pc);
@@ -947,7 +1028,7 @@
     const el = document.createElement("div");
     el.className = "city";
     el.dataset.city = city.id;
-    el.style.setProperty("--pc", COLORS[state.active]);
+    el.style.setProperty("--pc", pcolor(state.active));
     el.style.borderLeftColor = group.color;
     el.innerHTML = `
       <div class="ctop">
@@ -972,7 +1053,7 @@
     const el = document.createElement("div");
     el.className = "city tourist";
     el.dataset.city = t.id;
-    el.style.setProperty("--pc", COLORS[state.active]);
+    el.style.setProperty("--pc", pcolor(state.active));
     el.style.borderLeftColor = "#20B2AA";
     el.innerHTML = `
       <div class="ctop">
@@ -1020,38 +1101,58 @@
 
   function tapBuilding(id, key) {
     const c = state.cities[id];
-    if (c.owner !== state.active) {
-      // 다른 사람 땅/빈 땅: 먼저 소유권을 가져온다
-      tapOwner(id);
-      return;
-    }
     const tourist = TOURISTS.some(t => t.id === id);
+
+    // 1) 먼저 내 땅으로 (빈 땅 구매 / 남의 땅 인수). 인수하면 건물은 초기화.
+    if (c.owner !== state.active) {
+      const prev = c.owner === null ? "" : playerName(c.owner);
+      c.owner = state.active;
+      c.land = c.villa = c.building = c.hotel = c.landmark = false;
+      toast(prev ? (prev + " → " + playerName(state.active) + " · " + cityLabel(id) + " 인수")
+                 : (playerName(state.active) + " · " + cityLabel(id) + " 구매!"));
+    }
+
+    // 2) 관광지는 '보유' 하나뿐
     if (tourist) {
       c.land = !c.land;
-      if (!c.land) c.owner = null;
+      if (!c.land) releaseCity(id);
       afterChange();
       return;
     }
-    if (key === "landmark") {
-      const on = !c.landmark;
-      c.landmark = on;
-      if (on) { c.land = true; c.villa = true; c.building = true; c.hotel = true; }
-    } else {
-      const order = ["land", "villa", "building", "hotel"];
-      const idx = order.indexOf(key);
-      const on = !c[key];
-      c[key] = on;
-      if (on) {
-        // 앞 단계는 자동으로 함께 세워진다
-        for (let i = 0; i < idx; i++) c[order[i]] = true;
-        if (c.landmark) { /* 랜드마크 유지 */ }
-      } else {
-        // 뒤 단계는 함께 내려간다
-        for (let i = idx + 1; i < order.length; i++) c[order[i]] = false;
-        c.landmark = false;
-      }
-    }
+
+    // 3) 땅·빌라·빌딩·호텔·랜드마크 토글 (빌라·빌딩·호텔은 서로 독립)
+    toggleBuild(c, key);
     afterChange();
+  }
+
+  function toggleBuild(c, key) {
+    if (key === "land") {
+      if (c.land) {
+        // 땅을 끄면 소유권과 건물 모두 해제
+        c.land = false;
+        c.villa = c.building = c.hotel = c.landmark = false;
+        c.owner = null;
+      } else {
+        c.land = true;
+      }
+      return;
+    }
+    if (key === "landmark") {
+      if (c.landmark) {
+        c.landmark = false;
+      } else {
+        // 랜드마크는 땅+빌라+빌딩+호텔이 모두 있어야 세울 수 있다
+        c.land = c.villa = c.building = c.hotel = c.landmark = true;
+      }
+      return;
+    }
+    // 빌라 · 빌딩 · 호텔 : 각각 따로 켜고 끈다 (순서 없음)
+    c[key] = !c[key];
+    if (c[key]) {
+      c.land = true;                 // 건물을 세우면 땅은 기본
+    } else if (c.landmark) {
+      c.landmark = false;            // 하나라도 빠지면 랜드마크 해제
+    }
   }
 
   function cityLabel(id) {
@@ -1064,7 +1165,7 @@
   }
 
   function updateLandCardVisuals() {
-    const pc = COLORS[state.active];
+    const pc = pcolor(state.active);
     Object.keys(state.cities).forEach(id => {
       const c = state.cities[id];
       const el = document.querySelector(`[data-city="${id}"]`);
@@ -1080,9 +1181,9 @@
         od.style.background = "#c8d4e4";
       } else {
         label.textContent = playerName(c.owner);
-        od.style.background = COLORS[c.owner];
+        od.style.background = pcolor(c.owner);
         if (!mine) {
-          od.style.background = COLORS[c.owner];
+          od.style.background = pcolor(c.owner);
         }
       }
       const valEl = $("[data-val]", el);
@@ -1281,7 +1382,7 @@
     const rows = [];
     for (let i = 0; i < state.count; i++) {
       rows.push({
-        idx: i, name: playerName(i), color: COLORS[i],
+        idx: i, name: playerName(i), color: pcolor(i),
         land: landValue(i), cash: cashValue(i), total: totalValue(i),
         cities: cityCount(i), landmarks: landmarkCount(i)
       });
